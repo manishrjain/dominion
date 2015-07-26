@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -11,6 +10,8 @@ type State struct {
 	discard []string
 	deck    []string
 	Picks   []string
+
+	victory int
 }
 
 func (s *State) NewCopy() State {
@@ -24,6 +25,8 @@ func (s *State) NewCopy() State {
 	copy(ds.discard, s.discard)
 	copy(ds.deck, s.deck)
 	copy(ds.Picks, s.Picks)
+
+	ds.victory = -1
 	return ds
 }
 
@@ -57,6 +60,7 @@ func (s *State) Init() {
 	if s.TotalCards() != 10 {
 		panic("Invalid initialization of state")
 	}
+	s.victory = -1
 }
 
 func (s *State) drawCards(num int) []string {
@@ -66,18 +70,7 @@ func (s *State) drawCards(num int) []string {
 		s.discard = append(s.discard, s.deck...)
 		s.deck = s.deck[:0]
 
-		d1 := make([]string, len(s.discard))
-		copy(d1, s.discard)
-
-		v1 := s.TotalVictory()
 		shuffle(s.discard)
-		v2 := s.TotalVictory()
-		if v1 != v2 {
-			log.Printf("Discard before: %v\n", d1)
-			log.Printf("Discard after: %v\n", s.discard)
-			log.Printf("Victory points: %d -> %d\n", v1, v2)
-			panic("Shuffling is causing it")
-		}
 
 		s.deck = make([]string, len(s.discard))
 		copy(s.deck, s.discard)
@@ -120,6 +113,7 @@ func (s *State) DrawHand() {
 }
 
 func (s *State) AddCardAndDiscardHand(c string) {
+	s.victory = -1
 	s.discard = append(s.discard, c)
 	s.Picks = append(s.Picks, c)
 	s.Discard()
@@ -142,6 +136,10 @@ func (s *State) Value() int {
 }
 
 func (s *State) TotalVictory() int {
+	if s.victory != -1 {
+		return s.victory
+	}
+
 	total := 0
 	for _, card := range s.discard {
 		total += GetVictory(card)
@@ -152,6 +150,7 @@ func (s *State) TotalVictory() int {
 	for _, card := range s.hand {
 		total += GetVictory(card)
 	}
+	s.victory = total
 	return total
 }
 
