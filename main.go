@@ -2,13 +2,13 @@
 package main
 
 import (
+	"container/heap"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"runtime/pprof"
-	"sort"
 	"time"
 )
 
@@ -31,9 +31,22 @@ func (n Nodes) Less(i, j int) bool {
 	if mi == mj {
 		vi := n[i].S.TotalVictory()
 		vj := n[j].S.TotalVictory()
-		return vi < vj
+		return vi > vj
 	}
-	return mi > mj
+	return mi < mj
+}
+
+func (n *Nodes) Push(x interface{}) {
+	node := x.(Node)
+	*n = append(*n, node)
+}
+
+func (n *Nodes) Pop() interface{} {
+	old := *n
+	l := len(old) - 1
+	node := old[l]
+	*n = old[0:l]
+	return node
 }
 
 func shuffle(cards []string) {
@@ -85,36 +98,21 @@ func MainLoop() {
 	var state State
 	state.Init()
 
-	// considered := make(map[string]bool)
-
 	n := Node{S: state, B: board}
-	var q []Node
-	q = append(q, n)
+	h := new(Nodes)
+	heap.Init(h)
+	heap.Push(h, n)
 
 	attempt := 0
 	for {
-		if attempt > 5000 {
-			break
-		}
 		fmt.Printf("\nAttempt: %d\n", attempt)
 		attempt += 1
 
-		lq := len(q) - 1
-		node := q[lq]
-		q = q[:lq]
+		tp := heap.Pop(h)
+		node := tp.(Node)
+
 		node.S.Print()
 		fmt.Printf("In moves: %d\n", node.Moves)
-
-		/*
-			ps := node.S.PickState()
-			if already := considered[ps]; already {
-				fmt.Println("Already considered", ps)
-				continue
-			} else {
-				fmt.Println("New consideration", ps)
-				considered[ps] = true
-			}
-		*/
 
 		if node.S.TotalVictory() >= 24 {
 			fmt.Printf("Reached victory in %d moves\n", node.Moves)
@@ -122,8 +120,11 @@ func MainLoop() {
 			break
 		}
 		next := PlayTurn(node)
-		q = append(q, next...)
-		sort.Sort(Nodes(q))
+		for _, nn := range next {
+			heap.Push(h, nn)
+		}
+		// q = append(q, next...)
+		// sort.Sort(Nodes(q))
 	}
 }
 
@@ -132,12 +133,14 @@ func main() {
 	CardInit()
 
 	flag.Parse()
-	f, err := os.Create(*cpuprofile)
-	if err != nil {
-		log.Fatal(err)
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
 
 	MainLoop()
 	fmt.Println("DONE")
