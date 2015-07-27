@@ -26,13 +26,8 @@ func (n Nodes) Swap(i, j int) {
 	n[i], n[j] = n[j], n[i]
 }
 func (n Nodes) Less(i, j int) bool {
-	mi := n[i].Moves
-	mj := n[j].Moves
-	if mi == mj {
-		vi := n[i].S.TotalVictory()
-		vj := n[j].S.TotalVictory()
-		return vi > vj
-	}
+	mi := n[i].Moves - n[i].S.NumProvinces()
+	mj := n[j].Moves - n[j].S.NumProvinces()
 	return mi < mj
 }
 
