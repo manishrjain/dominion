@@ -12,6 +12,7 @@ type State struct {
 	Picks   []string
 
 	victory int
+	numProv int
 }
 
 func (s *State) NewCopy() State {
@@ -27,6 +28,7 @@ func (s *State) NewCopy() State {
 	copy(ds.Picks, s.Picks)
 
 	ds.victory = -1
+	ds.numProv = -1
 	return ds
 }
 
@@ -61,6 +63,7 @@ func (s *State) Init() {
 		panic("Invalid initialization of state")
 	}
 	s.victory = -1
+	s.numProv = -1
 }
 
 func (s *State) drawCards(num int) []string {
@@ -114,6 +117,7 @@ func (s *State) DrawHand() {
 
 func (s *State) AddCardAndDiscardHand(c string) {
 	s.victory = -1
+	s.numProv = -1
 	s.discard = append(s.discard, c)
 	s.Picks = append(s.Picks, c)
 	s.Discard()
@@ -152,6 +156,14 @@ func (s *State) TotalVictory() int {
 	}
 	s.victory = total
 	return total
+}
+
+func (s *State) NumProvinces() int {
+	if s.numProv != -1 {
+		return s.numProv
+	}
+	s.numProv = s.TotalCardsByName("province")
+	return s.numProv
 }
 
 func (s *State) TotalCards() int {

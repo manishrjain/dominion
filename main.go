@@ -115,8 +115,9 @@ func MainLoop() {
 				attempt, node.Moves, node.S.TotalVictory())
 		}
 
-		if node.S.TotalVictory() >= 24 {
-			fmt.Printf("Reached victory in %d moves\n", node.Moves)
+		if node.S.NumProvinces() >= 4 {
+			fmt.Printf("Reached 4 provinces in %d moves. Vic Points: %d\n",
+				node.Moves, node.S.TotalVictory())
 			node.S.Print()
 
 			break
