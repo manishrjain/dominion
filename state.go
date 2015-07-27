@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -51,6 +52,10 @@ func (s *State) Print() {
 	fmt.Printf("Victory points: %d\n", s.TotalVictory())
 }
 
+func (s *State) StringHand() string {
+	return strings.Join(s.hand, ",")
+}
+
 func (s *State) Init() {
 	for i := 0; i < 3; i++ {
 		s.deck = append(s.deck, "estate")
@@ -84,13 +89,11 @@ func (s *State) drawCards(num int) []string {
 		if len(s.discard) != 0 {
 			panic("Coders fault")
 		}
-		if len(s.deck) == 0 {
-			panic("Coders fault")
-		}
 	}
 
 	if len(s.deck) < num {
-		panic("Asking for too many cards")
+		// Chapel strategy can trash a lot of cards.
+		num = len(s.deck)
 	}
 
 	cards := make([]string, num)
@@ -111,8 +114,50 @@ func (s *State) DrawHand() {
 		return
 	}
 	cards := s.drawCards(5)
-	s.hand = make([]string, 5)
+	s.hand = make([]string, len(cards))
 	copy(s.hand, cards)
+}
+
+func (s *State) AddToHand(num int) {
+	cards := s.drawCards(num)
+	s.hand = append(s.hand, cards...)
+}
+
+func (s *State) CardInHand(name string) bool {
+	for _, card := range s.hand {
+		if card == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *State) CopyHand() []string {
+	cp := make([]string, len(s.hand))
+	copy(cp, s.hand)
+	return cp
+}
+
+func (s *State) TrashFromHand(indices []int) string {
+	var trashed []string
+	for _, idx := range indices {
+		if idx >= len(s.hand) {
+			panic("Invalid index")
+		}
+		trashed = append(trashed, s.hand[idx])
+		s.hand[idx] = ""
+	}
+
+	var newh []string
+	for _, card := range s.hand {
+		if card != "" {
+			newh = append(newh, card)
+		}
+	}
+	s.hand = newh
+
+	sort.Sort(sort.StringSlice(trashed))
+	return strings.Join(trashed, ",")
 }
 
 func (s *State) AddCardAndDiscardHand(c string) {

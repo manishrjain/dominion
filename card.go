@@ -5,7 +5,7 @@ import "fmt"
 var allcards []string
 
 func CardInit() {
-	a := [...]string{"estate", "dutchy", "province", "copper", "silver", "gold"}
+	a := [...]string{"smithy", "chapel", "estate", "dutchy", "province", "copper", "silver", "gold"}
 
 	allcards = a[:]
 	fmt.Printf("All Cards: %+v\n", allcards)
@@ -25,6 +25,10 @@ func GetCost(name string) int {
 		return 3
 	case "gold":
 		return 6
+	case "smithy":
+		return 4
+	case "chapel":
+		return 2
 	default:
 		panic("Invalid name")
 	}

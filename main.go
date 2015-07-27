@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"time"
 )
 
@@ -71,18 +72,113 @@ func addCard(b *Board, s *State, name string) bool {
 	return true
 }
 
-func PlayTurn(n Node) []Node {
+func BuyPhase(s State, b Board, moves int) []Node {
 	var result []Node
-	n.S.DrawHand()
+	{
+		// No purchase made.
+		ds := s.NewCopy()
+		db := b.NewCopy()
+		ds.Discard()
+		nn := Node{S: ds, B: db, Moves: moves + 1}
+		result = append(result, nn)
+	}
 
 	for _, name := range CardNames() {
-		ds := n.S.NewCopy()
-		db := n.B.NewCopy()
+		ds := s.NewCopy()
+		db := b.NewCopy()
 		if ok := addCard(&db, &ds, name); ok {
-			nn := Node{S: ds, B: db, Moves: n.Moves + 1}
+			nn := Node{S: ds, B: db, Moves: moves + 1}
 			result = append(result, nn)
 		}
 	}
+	return result
+}
+
+type TrashFunc func(picked []int)
+
+func doPick(picked, left []int, fn TrashFunc) {
+	if len(picked) > 0 {
+		fn(picked)
+	}
+	if len(left) == 0 {
+		return
+	}
+
+	for i := 0; i < len(left); i++ {
+		if len(picked) > 0 {
+			last := picked[len(picked)-1]
+			if left[i] < last {
+				continue
+			}
+		}
+
+		cp := make([]int, len(picked)+1)
+		copy(cp, picked)
+		cp[len(picked)] = left[i]
+
+		l := len(left) - 1
+		cl := make([]int, l)
+		copy(cl[0:i], left[:i])
+		copy(cl[i:], left[i+1:])
+
+		doPick(cp, cl, fn)
+	}
+}
+func PickCardsToTrash(num int, fn TrashFunc) {
+	var picked []int
+	left := make([]int, num)
+	for i := 0; i < num; i++ {
+		left[i] = i
+	}
+	doPick(picked, left, fn)
+}
+
+func PlayTurn(n Node) []Node {
+	// Draw Hand
+	n.S.DrawHand()
+
+	var result []Node
+	// Play no Actions. Direct to buy phase scenario.
+	result = append(result, BuyPhase(n.S, n.B, n.Moves)...)
+
+	// Play Actions scenario.
+	if has := n.S.CardInHand("smithy"); has {
+		st := n.S.NewCopy()
+		st.AddToHand(3)
+		result = append(result, BuyPhase(st, n.B, n.Moves)...)
+		// fmt.Printf("Cards in hand now: %s\n", n.S.StringHand())
+	}
+
+	if has := n.S.CardInHand("chapel"); has {
+		hand := n.S.CopyHand()
+		cidx := -1
+		for idx, card := range hand {
+			if card == "chapel" {
+				cidx = idx
+			}
+		}
+		if cidx == -1 {
+			panic("Should happen")
+		}
+
+		alreadytrashed := make(map[string]bool)
+		trashFn := func(picked []int) {
+			for _, idx := range picked {
+				if cidx == idx {
+					return
+				}
+			}
+
+			st := n.S.NewCopy()
+			tr := st.TrashFromHand(picked)
+			if al := alreadytrashed[tr]; !al {
+				result = append(result, BuyPhase(st, n.B, n.Moves)...)
+				alreadytrashed[tr] = true
+			}
+		}
+		PickCardsToTrash(len(hand), trashFn)
+	}
+
 	return result
 }
 
@@ -106,8 +202,8 @@ func MainLoop() {
 		node := tp.(Node)
 
 		if attempt%1000 == 0 {
-			fmt.Printf("Iter [%d] Moves: %d Victory Points: %d\n",
-				attempt, node.Moves, node.S.TotalVictory())
+			fmt.Printf("Iter [%d] Moves: %d VP: %d Picks: %s\n",
+				attempt, node.Moves, node.S.TotalVictory(), strings.Join(node.S.Picks, ","))
 		}
 
 		if node.S.NumProvinces() >= 4 {
