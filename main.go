@@ -105,17 +105,19 @@ func MainLoop() {
 
 	attempt := 0
 	for {
-		fmt.Printf("\nAttempt: %d\n", attempt)
 		attempt += 1
 
 		tp := heap.Pop(h)
 		node := tp.(Node)
 
-		node.S.Print()
-		fmt.Printf("In moves: %d\n", node.Moves)
+		if attempt%1000 == 0 {
+			fmt.Printf("Iter [%d] Moves: %d Victory Points: %d\n",
+				attempt, node.Moves, node.S.TotalVictory())
+		}
 
 		if node.S.TotalVictory() >= 24 {
 			fmt.Printf("Reached victory in %d moves\n", node.Moves)
+			node.S.Print()
 
 			break
 		}
