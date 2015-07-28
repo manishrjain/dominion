@@ -15,7 +15,7 @@ go install github.com/manishrjain/dominion
 
 ### Usage
 ```bash
-$ dominion
+$ dominion --numiter 10
 ```
 
 ### Typical Output
