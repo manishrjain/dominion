@@ -20,7 +20,7 @@ func (b *Board) Init(players int) {
 		b.cards = append(b.cards, "estate")
 		b.cards = append(b.cards, "dutchy")
 		b.cards = append(b.cards, "province")
-		// b.cards = append(b.cards, "smithy")
+		b.cards = append(b.cards, "smithy")
 		b.cards = append(b.cards, "chapel")
 	}
 	for i := 0; i < 30; i++ {

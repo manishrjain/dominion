@@ -9,8 +9,8 @@ import (
 	"math/rand"
 	"os"
 	"runtime/pprof"
+	"sort"
 	"strings"
-	"time"
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "Path to profile file")
@@ -72,28 +72,6 @@ func addCard(b *Board, s *State, name string) bool {
 	return true
 }
 
-func BuyPhase(s State, b Board, moves int) []Node {
-	var result []Node
-	{
-		// No purchase made.
-		ds := s.NewCopy()
-		db := b.NewCopy()
-		ds.Discard()
-		nn := Node{S: ds, B: db, Moves: moves + 1}
-		result = append(result, nn)
-	}
-
-	for _, name := range CardNames() {
-		ds := s.NewCopy()
-		db := b.NewCopy()
-		if ok := addCard(&db, &ds, name); ok {
-			nn := Node{S: ds, B: db, Moves: moves + 1}
-			result = append(result, nn)
-		}
-	}
-	return result
-}
-
 type TrashFunc func(picked []int)
 
 func doPick(picked, left []int, fn TrashFunc) {
@@ -131,6 +109,29 @@ func PickCardsToTrash(num int, fn TrashFunc) {
 		left[i] = i
 	}
 	doPick(picked, left, fn)
+}
+
+func BuyPhase(s State, b Board, moves int) []Node {
+	var result []Node
+	{
+		// No purchase made.
+		ds := s.NewCopy()
+		db := b.NewCopy()
+		ds.Picks = append(ds.Picks, "NONE")
+		ds.Discard()
+		nn := Node{S: ds, B: db, Moves: moves + 1}
+		result = append(result, nn)
+	}
+
+	for _, name := range CardNames() {
+		ds := s.NewCopy()
+		db := b.NewCopy()
+		if ok := addCard(&db, &ds, name); ok {
+			nn := Node{S: ds, B: db, Moves: moves + 1}
+			result = append(result, nn)
+		}
+	}
+	return result
 }
 
 func PlayTurn(n Node) []Node {
@@ -182,7 +183,7 @@ func PlayTurn(n Node) []Node {
 	return result
 }
 
-func MainLoop() {
+func MainLoop() (int, string) {
 	var board Board
 	board.Init(2)
 
@@ -194,12 +195,23 @@ func MainLoop() {
 	heap.Init(h)
 	heap.Push(h, n)
 
+	repetitive := false
+	considered := make(map[string]bool)
 	attempt := 0
 	for {
 		attempt += 1
 
 		tp := heap.Pop(h)
 		node := tp.(Node)
+
+		ps := node.S.PickState()
+		if already := considered[ps]; already {
+			// fmt.Printf("Already considered: %s\n", ps)
+			repetitive = true
+			continue
+		} else {
+			considered[ps] = true
+		}
 
 		if attempt%1000 == 0 {
 			fmt.Printf("Iter [%d] Moves: %d VP: %d Picks: %s\n",
@@ -210,20 +222,22 @@ func MainLoop() {
 			fmt.Printf("Reached 4 provinces in %d moves. Vic Points: %d\n",
 				node.Moves, node.S.TotalVictory())
 			node.S.Print()
+			fmt.Println("Was repetitive", repetitive)
 
-			break
+			return node.Moves, node.S.PickState()
 		}
 		next := PlayTurn(node)
 		for _, nn := range next {
-			heap.Push(h, nn)
+			ps = nn.S.PickState()
+			if already := considered[ps]; !already {
+				heap.Push(h, nn)
+			}
 		}
-		// q = append(q, next...)
-		// sort.Sort(Nodes(q))
 	}
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	// rand.Seed(time.Now().UnixNano())
 	CardInit()
 
 	flag.Parse()
@@ -236,6 +250,21 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	MainLoop()
+	var moves []int
+	var sols []string
+	for i := 0; i < 5; i++ {
+		rand.Seed(int64(i))
+		m, s := MainLoop()
+		moves = append(moves, m)
+		sols = append(sols, s)
+	}
+
+	dm := make([]int, len(moves))
+	copy(dm, moves)
+	sort.Sort(sort.IntSlice(dm))
+	fmt.Println("Found solution in moves:", dm)
+	for i, sol := range sols {
+		fmt.Println(moves[i], sol)
+	}
 	fmt.Println("DONE")
 }
