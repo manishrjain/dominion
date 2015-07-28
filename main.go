@@ -14,6 +14,7 @@ import (
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "Path to profile file")
+var numiter = flag.Int("numiter", 10, "Number of iterations to run")
 
 type Node struct {
 	S     State
@@ -192,7 +193,7 @@ func main() {
 
 	var moves []int
 	var sols []string
-	for i := 0; i < 10; i++ {
+	for i := 0; i < *numiter; i++ {
 		rand.Seed(int64(i))
 		m, s := MainLoop()
 		moves = append(moves, m)
