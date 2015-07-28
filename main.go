@@ -72,45 +72,6 @@ func addCard(b *Board, s *State, name string) bool {
 	return true
 }
 
-type TrashFunc func(picked []int)
-
-func doPick(picked, left []int, fn TrashFunc) {
-	if len(picked) > 0 {
-		fn(picked)
-	}
-	if len(left) == 0 {
-		return
-	}
-
-	for i := 0; i < len(left); i++ {
-		if len(picked) > 0 {
-			last := picked[len(picked)-1]
-			if left[i] < last {
-				continue
-			}
-		}
-
-		cp := make([]int, len(picked)+1)
-		copy(cp, picked)
-		cp[len(picked)] = left[i]
-
-		l := len(left) - 1
-		cl := make([]int, l)
-		copy(cl[0:i], left[:i])
-		copy(cl[i:], left[i+1:])
-
-		doPick(cp, cl, fn)
-	}
-}
-func PickCardsToTrash(num int, fn TrashFunc) {
-	var picked []int
-	left := make([]int, num)
-	for i := 0; i < num; i++ {
-		left[i] = i
-	}
-	doPick(picked, left, fn)
-}
-
 func BuyPhase(s State, b Board, moves int) []Node {
 	var result []Node
 	{
@@ -151,33 +112,12 @@ func PlayTurn(n Node) []Node {
 	}
 
 	if has := n.S.CardInHand("chapel"); has {
-		hand := n.S.CopyHand()
-		cidx := -1
-		for idx, card := range hand {
-			if card == "chapel" {
-				cidx = idx
-			}
-		}
-		if cidx == -1 {
-			panic("Should happen")
-		}
-
-		alreadytrashed := make(map[string]bool)
-		trashFn := func(picked []int) {
-			for _, idx := range picked {
-				if cidx == idx {
-					return
-				}
-			}
-
-			st := n.S.NewCopy()
-			tr := st.TrashFromHand(picked)
-			if al := alreadytrashed[tr]; !al {
-				result = append(result, BuyPhase(st, n.B, n.Moves)...)
-				alreadytrashed[tr] = true
-			}
-		}
-		PickCardsToTrash(len(hand), trashFn)
+		st := n.S.NewCopy()
+		st.TrashUselessCards()
+		// If I trash all possible combinations of cards in hand, the number of
+		// states generated are way too many to run within a single machine having
+		// 25GB of RAM. So, instead, just delete Copper + Estate, aka Useless Cards.
+		result = append(result, BuyPhase(st, n.B, n.Moves)...)
 	}
 
 	return result
@@ -252,7 +192,7 @@ func main() {
 
 	var moves []int
 	var sols []string
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		rand.Seed(int64(i))
 		m, s := MainLoop()
 		moves = append(moves, m)

@@ -160,6 +160,17 @@ func (s *State) TrashFromHand(indices []int) string {
 	return strings.Join(trashed, ",")
 }
 
+func (s *State) TrashUselessCards() {
+	var newh []string
+	for _, card := range s.hand {
+		if card == "copper" || card == "estate" {
+			continue
+		}
+		newh = append(newh, card)
+	}
+	s.hand = newh
+}
+
 func (s *State) AddCardAndDiscardHand(c string) {
 	s.victory = -1
 	s.numProv = -1
